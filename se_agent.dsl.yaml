@@ -1,0 +1,100 @@
+version: 1
+agent:
+  name: NJU-SE-Agent
+  description: 南大软件学院流程RAG智能体（检索增强生成 + 工具链 + 记忆）
+  prompt_policies: retrieval-grounded
+
+data_sources:
+  - type: file_system
+    path: ./data
+    include_extensions: [pdf, docx, md, html]
+  - type: web
+    urls: []
+
+ingestion:
+  ocr_enabled: true
+  metadata_fields: [source, semester, course, type, version, published_at, visibility]
+
+indexing:
+  chunking:
+    mode: hierarchical
+    target_tokens: 768
+    overlap_tokens: 256
+    preserve_headings: true
+  vector_store:
+    provider: qdrant
+    url: ${QDRANT_URL}
+    api_key: ${QDRANT_API_KEY}
+    collection: se_flows
+    distance: cosine
+  lexical_store:
+    provider: elasticsearch
+    url: ${ELASTICSEARCH_URL}
+    index: se_flows
+    bm25:
+      k1: 1.2
+      b: 0.75
+
+retrieval:
+  embedding:
+    model: bge-m3
+    dims: 1024
+    batch_size: 64
+  hybrid:
+    dense_top_k: 30
+    sparse_top_k: 30
+    dense_weight: 0.6
+    sparse_weight: 0.4
+    normalize_scores: true
+  filter:
+    default:
+      version: latest
+      domain: SE
+      semester: current
+  rerank:
+    model: bge-reranker-v2-m3
+    top_k: 10
+    mmr_lambda: 0.4
+    deduplicate: true
+
+memory:
+  short_term:
+    window_messages: 20
+    summarization: true
+  long_term:
+    summarizer: map_reduce
+    decay_days: 30
+    topic_buckets: [课程, 项目, 验收, 开题, 学术规范]
+
+tools:
+  - name: template_center
+    type: mcp
+    actions: [list, download]
+  - name: checklist_generator
+    type: local
+  - name: calendar
+    type: mcp
+    provider: feishu
+  - name: doc_validator
+    type: local
+
+responses:
+  include_citations: true
+  citation_fields: [source, section_path, version]
+  max_context_tokens: 4096
+
+publish:
+  endpoints:
+    - aliyun_bailian
+    - huawei
+  auth:
+    type: api_key
+  observability:
+    logs: enabled
+    metrics: enabled
+
+evaluation:
+  metrics: [recall_at_3, latency_p95]
+  targets:
+    recall_at_3: 0.85
+    latency_p95_ms: 2500

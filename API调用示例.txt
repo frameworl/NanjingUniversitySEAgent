@@ -1,0 +1,52 @@
+NJU SE Agent API — 调用示例
+版本：v1.0
+日期：2025-11-10
+
+说明：以下示例基于本仓库的 `api_server_example.py`（FastAPI）。
+启动服务：
+  python api_server_example.py
+
+一、Curl 示例（Windows内置Curl可用）
+1) 问答接口 /v1/ask
+curl -X POST "http://localhost:8000/v1/ask" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"软工实践第3次里程碑需要提交什么？\"}"
+
+2) 清单生成 /v1/checklist
+curl -X POST "http://localhost:8000/v1/checklist" \
+  -H "Content-Type: application/json" \
+  -d "{\"topic\":\"开题准备\"}"
+
+3) 创建日程 /v1/calendar/create
+curl -X POST "http://localhost:8000/v1/calendar/create" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"开题评审\",\"due\":\"2025-11-20\"}"
+
+4) 获取文档源 /v1/docs/source
+curl "http://localhost:8000/v1/docs/source?id=se_template_2024"
+
+二、PowerShell 示例（Invoke-RestMethod）
+1) 问答接口
+$body = @{ query = "软工实践第3次里程碑需要提交什么？" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/v1/ask" -Body $body -ContentType "application/json"
+
+2) 清单生成
+$body = @{ topic = "开题准备" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/v1/checklist" -Body $body -ContentType "application/json"
+
+3) 创建日程
+$body = @{ title = "开题评审"; due = "2025-11-20" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/v1/calendar/create" -Body $body -ContentType "application/json"
+
+4) 获取文档源
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/v1/docs/source?id=se_template_2024"
+
+三、返回字段说明（示例）
+- /v1/ask：answer（文本）、citations（source、section_path、version）、confidence、actions
+- /v1/checklist：topic、items（item、status）
+- /v1/calendar/create：title、due、assignees、id、status
+- /v1/docs/source：id、download_url、type
+
+四、后续接入建议
+- 将本地示例替换为真实RAG与工具链逻辑，读取 `se_agent.dsl.yaml` 的配置项
+- 在阿里云百炼/华为平台发布后，将基础URL替换为平台提供的入口，并添加鉴权头（API Key/Token）
