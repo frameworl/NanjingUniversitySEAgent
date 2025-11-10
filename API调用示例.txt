@@ -50,3 +50,30 @@ Invoke-RestMethod -Method Get -Uri "http://localhost:8000/v1/docs/source?id=se_t
 四、后续接入建议
 - 将本地示例替换为真实RAG与工具链逻辑，读取 `se_agent.dsl.yaml` 的配置项
 - 在阿里云百炼/华为平台发布后，将基础URL替换为平台提供的入口，并添加鉴权头（API Key/Token）
+
+五、索引插入与检索（Qdrant）
+说明：先运行 `python qdrant_setup.py` 或 `python qdrant_insert_samples.py` 对集合进行创建/写入。
+
+1) Curl — 插入向量 /v1/index/insert（ID需为整数或UUID）
+curl -X POST "http://localhost:8000/v1/index/insert" \
+  -H "Content-Type: application/json" \
+  -d "{\"items\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"vector\":[0.1,0.2,0.3,...(请填充为1024维) ],\"payload\":{\"title\":\"流程样例-CLI\"}}]}"
+
+2) Curl — 向量检索 /v1/index/search
+curl -X POST "http://localhost:8000/v1/index/search" \
+  -H "Content-Type: application/json" \
+  -d "{\"query_vector\":[0.1,0.2,0.3,...(1024维)],\"limit\":5}"
+
+3) PowerShell — 插入向量（ID使用 GUID）
+$vec = 1..1024 | % { Get-Random }
+$id = [guid]::NewGuid().ToString()
+$item = @{ id = $id; vector = $vec; payload = @{ title = "流程样例-PS" } }
+$body = @{ items = @($item) } | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/v1/index/insert" -Body $body -ContentType "application/json"
+
+4) PowerShell — 向量检索
+$q = 1..1024 | % { Get-Random }
+$body = @{ query_vector = $q; limit = 5 } | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/v1/index/search" -Body $body -ContentType "application/json"
+
+提示：服务端默认集合为 `se_flows`，维度为 1024，距离为 `cosine`。通过环境变量可覆盖：`QDRANT_COLLECTION`、`QDRANT_VECTOR_SIZE`。
